@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.SqlClient;
 using Dapper;
 using System.Linq;
@@ -18,6 +19,7 @@ namespace LBHTenancyAPITest.Test.Gateways
         public UhTenanciesGatewayTest(DatabaseFixture fixture)
         {
             _db = fixture.Db;
+            _db.Open();
         }
 
         [Fact]
@@ -28,13 +30,13 @@ namespace LBHTenancyAPITest.Test.Gateways
             Assert.Empty(tenancies);
         }
 
-        [Fact]
-        public void WhenGivenASingleTenancyRef_GetTenanciesByRefs_ShouldReturnASingleResult()
-        {
-            var tenancies = GetTenanciesByRef(new List<string>() {"FAKE/01"});
-
-            Assert.Single(tenancies);
-        }
+//        [Fact]
+//        public void WhenGivenASingleTenancyRef_GetTenanciesByRefs_ShouldReturnASingleResult()
+//        {
+//            var tenancies = GetTenanciesByRef(new List<string>() {"FAKE/01"});
+//
+//            Assert.Single(tenancies);
+//        }
 
         [Fact]
         public void WhenGivenTenancyRef_GetTenanciesByRefs_ShouldReturnTenancyObjectForThatRef()
@@ -42,18 +44,32 @@ namespace LBHTenancyAPITest.Test.Gateways
             var random = new Bogus.Randomizer();
             var thing = new
             {
-                tenancyRef = random.String(),
-                currentBalance = random.Double()
+                tenancyRef = random.Hash(),
+                currentBalance = Math.Round(random.Double(), 2),
+                lastActionTime = new DateTime(random.Int(1900, 1999), random.Int(1, 12), random.Int(1, 28), 9, 30, 0),
+                lastActionType = random.Hash(),
+                agreementStatus = random.Word()
             };
-            
-//            _db.Query($"INSERT INTO tenagree (tag_ref, cur_bal) VALUES ({thing.tenancyRef}, {thing.currentBalance})");
-//            _db.Query($"INSERT INTO araction (tag_ref, action_code, action_date) VALUES ({thing.tenancyRef}, {thing.actionCode}, x)");
-//            _db.Query("INSERT INTO raaction (act_code, act_name) VALUES (x, x)");
-//            _db.Query("INSERT INTO arag (tag_ref, arag_status) VALUES (x, x)");
 
+            string commandText =
+                "INSERT INTO araction (tag_ref, action_code, action_date) VALUES (@tenancyRef, @lastActionType, @lastActionTime)";
             
+            SqlCommand command = new SqlCommand(commandText, _db);
+            command.Parameters.Add("@tenancyRef", SqlDbType.NVarChar);
+            command.Parameters["@tenancyRef"].Value = thing.tenancyRef;
+            command.Parameters.Add("@lastActionType", SqlDbType.NVarChar);
+            command.Parameters["@lastActionType"].Value = thing.lastActionType;
+            command.Parameters.Add("@lastActionTime", SqlDbType.SmallDateTime);
+            command.Parameters["@lastActionTime"].Value = thing.lastActionTime;
+
+            command.ExecuteNonQuery();
+
+            _db.Query($"INSERT INTO tenagree (tag_ref, cur_bal) VALUES ('{thing.tenancyRef}', {thing.currentBalance})");
             
-            var tenancies = GetTenanciesByRef(new List<string>() {"FAKE/01"});
+//            _db.Query("INSERT INTO raaction (act_code, act_name) VALUES (x, x)");
+            _db.Query($"INSERT INTO arag (tag_ref, arag_status) VALUES ('{thing.tenancyRef}', '{thing.agreementStatus}')");
+
+            var tenancies = GetTenanciesByRef(new List<string>() {thing.tenancyRef});
             var expectedTenancy = new TenancyListItem()
             {
                 TenancyRef = thing.tenancyRef,
@@ -61,10 +77,12 @@ namespace LBHTenancyAPITest.Test.Gateways
                 ShortAddress = "123 Test",
                 Postcode = "E1 123",
                 Balance = thing.currentBalance,
-                LastActionTime = new DateTime(1990, 10, 11),
-                LastActionType = "CO1",
-                CurrentAgreementStatus = "Active"
+                LastActionTime = thing.lastActionTime,
+                LastActionType = thing.lastActionType,
+                CurrentAgreementStatus = thing.agreementStatus
             };
+            
+            Assert.Single(tenancies);
 
             Assert.Contains(expectedTenancy, tenancies);
         }
