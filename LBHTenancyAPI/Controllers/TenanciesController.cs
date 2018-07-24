@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Mvc;
 namespace LBHTenancyAPI.Controllers
 {
     [Produces("application/json")]
-    [Route("api/tenancies")]
     public class TenanciesController : Controller
     {
         private readonly IListTenancies listTenancies;
@@ -19,6 +18,7 @@ namespace LBHTenancyAPI.Controllers
             this.listTenancies = listTenancies;
         }
 
+        [Route("api/tenancies")]
         [HttpGet]
         public async Task<IActionResult> Get([FromQuery(Name = "tenancy_refs")] List<string> tenancyRefs)
         {
@@ -50,6 +50,7 @@ namespace LBHTenancyAPI.Controllers
         }
 
 
+        [Route("api/tenancies_action_diary_details")]
         [HttpGet]
         public async Task<IActionResult> GetActionDiaryDetails( List<string> tenancyRefs)
         {
@@ -78,6 +79,7 @@ namespace LBHTenancyAPI.Controllers
             return Ok(result);
         }
 
+        [Route("api/tenancies_payment_transaction_details")]
         [HttpGet]
         public async Task<IActionResult> GetPaymentTransactionDetails(List<string> tenancyRefs)
         {
