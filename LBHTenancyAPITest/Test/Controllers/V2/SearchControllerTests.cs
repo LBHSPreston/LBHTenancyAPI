@@ -40,7 +40,7 @@ namespace LBHTenancyAPITest.Test.Controllers.V2
 
             var request = new SearchTenancyRequest
             {
-                TenancyRef = "test"
+                TenancyRef = "testing"
             };
             //act
             var response = await _classUnderTest.Get(request).ConfigureAwait(false);
